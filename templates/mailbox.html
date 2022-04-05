@@ -1,0 +1,92 @@
+{% extends "base-template.html" %}
+
+{% block title %}
+    Mailbox for {{ current_user.name }}
+{% endblock %}
+
+{% block content %}
+       <h2>Upload your private Rsa-Key to decrypt your message.</h2>
+            <input type="file" id="priv-file" enctype="multipart/form-data" />
+            <button type="button" onclick="readPrivateKey()">Upload private Rsa-Key</button><span id="priv-loaded"></span>
+            <br />
+    <h1 id="main-heading">Mailbox</h1>
+
+    <table>
+        <tr>
+            <th>From:</th>
+            <th>Sent:</th>
+            <th>Title:</th>
+            <th>Message</th>
+        </tr>
+        {% for message in messages %}
+            <tr>
+                <td>{{ message.sender.name }}</td>
+                {% if message.sent_time is not none %}
+                    <td>{{ message.sent_time.year }}-{{ message.sent_time.month }}-{{ message.sent_time.day }}</td>
+                {% else %}
+                    <td>-</td>
+                {% endif %}
+                <td>{{ message.title }}</td>
+                <td id="encrypted-{{ loop.index }}" onclick="decrypt(this)">{{ message.body }}</td>
+            </tr>
+        {% endfor %}
+        <h1>Decrypted message:</h1>
+        <div id="plain-text"></div>
+    </table>
+    <br/><br/><br/><br/>
+    <div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+        <script src="../static/js/rsa.js"></script>
+
+
+        <script>
+
+            let privateKey;
+            function decrypt(messageElement) {
+                let message = JSON.parse(messageElement.innerHTML);
+                console.log("Key", message.encryptedKey);
+                let aesKey = deCryptAesKey(message.encryptedKey);
+                let clearText = aes_decrypt(message.encryptedMessage, aesKey);
+                document.getElementById("plain-text").innerHTML =  clearText;
+
+            }
+
+            function readPrivateKey() {
+                let files = document.getElementById("priv-file").files;
+                let file = files[0];
+                let reader = new FileReader();
+
+                reader.onloadend = function (event) {
+                    privateKey = event.target.result;
+                    privateKey = privateKey.replace(/(\r\n|\n|\r)/gm, "");
+                    document.getElementById("priv-loaded").innerHTML = "Private key loaded";
+                };
+
+                reader.readAsText(file);
+            }
+
+
+            function deCryptAesKey(cipherKey) {
+
+
+                let rsaEncrypt = new JSEncrypt();
+
+                rsaEncrypt.setPrivateKey(privateKey);
+
+                let key = rsaEncrypt.decrypt(cipherKey);
+                console.log("decypted key", key);
+                return key;
+            }
+
+            function aes_decrypt(message, aesKey) {
+                console.log(message);
+                console.log(aesKey);
+                return CryptoJS.AES.decrypt(message, aesKey).toString(CryptoJS.enc.Utf8);
+            }
+
+        </script>
+
+    </div>
+
+{% endblock %}
